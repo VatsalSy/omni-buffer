@@ -17,7 +17,7 @@ export class ApplyChangesCommand {
     const editor = vscode.window.activeTextEditor
     if (!editor) return
     const document = editor.document
-    if (!document.uri.scheme.startsWith('multibuffer')) return
+    if (document.uri.scheme !== 'multibuffer') return
     try {
       const multiBufferDoc = this.multiBufferProvider.getDocument(document.uri)
       if (!multiBufferDoc) {
@@ -55,7 +55,12 @@ export class ApplyChangesCommand {
         },
         async () => {
           await changeTracker.applyChanges(changes)
-          await vscode.commands.executeCommand('workbench.action.closeActiveEditor')
+          try {
+            await vscode.commands.executeCommand('workbench.action.closeActiveEditor')
+          } catch (error) {
+            // Log error but don't fail the operation
+            console.warn('Failed to close editor:', error)
+          }
           vscode.window.showInformationMessage(
             `Successfully applied ${changeCount} changes to ${fileCount} files`
           )

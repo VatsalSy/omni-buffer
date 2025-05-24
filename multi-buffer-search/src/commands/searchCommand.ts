@@ -85,15 +85,6 @@ export class SearchCommand {
   }
 
   private async getSearchOptions(): Promise<SearchOptions | undefined> {
-    const query = await vscode.window.showInputBox({
-      prompt: 'Search query',
-      placeHolder: 'Enter search text or regex',
-      validateInput: value => {
-        if (!value.trim()) return 'Search query cannot be empty'
-        return undefined
-      }
-    })
-    if (!query) return undefined
     const quickPickItems = [
       { label: 'Case Sensitive', picked: false, flag: 'caseSensitive' },
       { label: 'Regular Expression', picked: false, flag: 'regex' },
@@ -108,12 +99,37 @@ export class SearchCommand {
         acc[item.flag] = true
         return acc
       }, {} as any) || {}
+    
+    const query = await vscode.window.showInputBox({
+      prompt: 'Search query',
+      placeHolder: 'Enter search text or regex',
+      validateInput: value => {
+        if (!value.trim()) return 'Search query cannot be empty'
+        
+        // Validate regex syntax if regex option is selected
+        if (flags.regex) {
+          try {
+            new RegExp(value)
+          } catch (error) {
+            return `Invalid regular expression: ${error.message}`
+          }
+        }
+        
+        return undefined
+      }
+    })
+    if (!query) return undefined
+    
+    // Get context lines from configuration
+    const config = vscode.workspace.getConfiguration('multiBufferSearch')
+    const contextLines = config.get<number>('contextLines', 2)
+    
     return {
       query,
       isRegex: flags.regex || false,
       isCaseSensitive: flags.caseSensitive || false,
       matchWholeWord: flags.wholeWord || false,
-      contextLines: 2
+      contextLines
     }
   }
 }

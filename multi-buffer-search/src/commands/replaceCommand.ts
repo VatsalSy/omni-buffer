@@ -16,16 +16,17 @@ import { ChangeTracker } from '../services/changeTracker'
 import { ReplaceOptions, MultiBufferDocument } from '../models/types'
 import { MultiBufferProvider } from '../multiBufferProvider'
 
-export class ReplaceCommand extends SearchCommand {
-  constructor(
-    searchService: SearchService,
-    formatter: ResultFormatter,
-    decorationService: DecorationService,
-    multiBufferProvider: MultiBufferProvider
-  ) {
-    super(searchService, formatter, decorationService, multiBufferProvider)
-  }
+interface SearchFlags {
+  caseSensitive?: boolean
+  regex?: boolean
+  wholeWord?: boolean
+}
 
+interface QuickPickFlag extends vscode.QuickPickItem {
+  flag: keyof SearchFlags
+}
+
+export class ReplaceCommand extends SearchCommand {
   async execute(): Promise<void> {
     try {
       const options = await this.getReplaceOptions()
@@ -82,8 +83,7 @@ export class ReplaceCommand extends SearchCommand {
             0
           )
           vscode.window.showInformationMessage(
-            `Ready to replace ${matchCount} matches in ${fileCount} files. ` +
-              `Review changes and press Ctrl+S to apply.`
+            `Ready to replace ${matchCount} matches in ${fileCount} files. Review changes and press Ctrl+S to apply.`
           )
         }
       )
@@ -103,7 +103,7 @@ export class ReplaceCommand extends SearchCommand {
       placeHolder: 'Enter replacement text'
     })
     if (replacement === undefined) return undefined
-    const quickPickItems = [
+    const quickPickItems: QuickPickFlag[] = [
       { label: 'Case Sensitive', picked: false, flag: 'caseSensitive' },
       { label: 'Regular Expression', picked: false, flag: 'regex' },
       { label: 'Whole Word', picked: false, flag: 'wholeWord' }
@@ -112,11 +112,10 @@ export class ReplaceCommand extends SearchCommand {
       canPickMany: true,
       placeHolder: 'Select search options'
     })
-    const flags =
-      selectedItems?.reduce((acc, item) => {
-        acc[item.flag] = true
-        return acc
-      }, {} as any) || {}
+    const flags: SearchFlags = selectedItems?.reduce<SearchFlags>((acc, item) => {
+      acc[item.flag] = true
+      return acc
+    }, {}) || {}
     return {
       query,
       replacement,
@@ -127,3 +126,4 @@ export class ReplaceCommand extends SearchCommand {
     }
   }
 }
+
