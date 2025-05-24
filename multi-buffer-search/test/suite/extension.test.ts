@@ -4,7 +4,7 @@
  * Basic tests for search and formatting.
  */
 
-import * as assert from 'assert'
+import * as assert from 'node:assert'
 import * as vscode from 'vscode'
 import { SearchService } from '../../src/services/searchService'
 import { ResultFormatter } from '../../src/services/resultFormatter'
@@ -17,7 +17,8 @@ suite('Extension Test Suite', () => {
       isRegex: false,
       isCaseSensitive: false,
       matchWholeWord: false,
-      contextLines: 2
+      contextBefore: 2,
+      contextAfter: 2
     })
     assert.ok(results.size >= 0, 'Search executed')
   })
@@ -30,7 +31,8 @@ suite('Extension Test Suite', () => {
       isRegex: false,
       isCaseSensitive: false,
       matchWholeWord: false,
-      contextLines: 2
+      contextBefore: 2,
+      contextAfter: 2
     })
     assert.ok(content.length >= 0, 'Content generated')
     assert.ok(mapping.excerpts.size >= 0, 'Mapping valid')
