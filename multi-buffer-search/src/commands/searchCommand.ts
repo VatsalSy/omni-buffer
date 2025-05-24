@@ -123,13 +123,17 @@ export class SearchCommand {
     // Get context lines from configuration
     const config = vscode.workspace.getConfiguration('multiBufferSearch')
     const contextLines = config.get<number>('contextLines', 2)
+    const contextBefore = config.get<number>('contextBefore')
+    const contextAfter = config.get<number>('contextAfter')
     
     return {
       query,
       isRegex: flags.regex || false,
       isCaseSensitive: flags.caseSensitive || false,
       matchWholeWord: flags.wholeWord || false,
-      contextLines
+      contextBefore,
+      contextAfter,
+      contextLines  // Keep for backward compatibility
     }
   }
 }

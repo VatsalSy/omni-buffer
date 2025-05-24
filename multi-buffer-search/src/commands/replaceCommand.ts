@@ -116,13 +116,21 @@ export class ReplaceCommand extends SearchCommand {
       acc[item.flag] = true
       return acc
     }, {}) || {}
+    // Get context configuration
+    const config = vscode.workspace.getConfiguration('multiBufferSearch')
+    const contextLines = config.get<number>('contextLines', 2)
+    const contextBefore = config.get<number>('contextBefore')
+    const contextAfter = config.get<number>('contextAfter')
+    
     return {
       query,
       replacement,
       isRegex: flags.regex || false,
       isCaseSensitive: flags.caseSensitive || false,
       matchWholeWord: flags.wholeWord || false,
-      contextLines: 2
+      contextBefore,
+      contextAfter,
+      contextLines  // Keep for backward compatibility
     }
   }
 }

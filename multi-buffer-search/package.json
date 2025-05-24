@@ -75,7 +75,19 @@
           "default": 2,
           "minimum": 0,
           "maximum": 10,
-          "description": "Number of context lines to show above and below search results"
+          "description": "Number of context lines to show above and below search results (deprecated: use contextBefore/contextAfter)"
+        },
+        "multiBufferSearch.contextBefore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Number of context lines to show before search results (overrides contextLines)"
+        },
+        "multiBufferSearch.contextAfter": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Number of context lines to show after search results (overrides contextLines)"
         }
       }
     }

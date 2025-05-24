@@ -108,7 +108,9 @@ export interface SearchOptions {
   matchWholeWord: boolean
   includePattern?: string
   excludePattern?: string
-  contextLines: number
+  contextBefore?: number
+  contextAfter?: number
+  contextLines?: number  // Deprecated: use contextBefore/contextAfter instead
   maxResults?: number
 }
 
@@ -122,4 +124,22 @@ export interface MultiBufferDocument {
   searchOptions: SearchOptions
   replaceOptions?: ReplaceOptions
   uri: vscode.Uri
+}
+
+// Helper function to handle backward compatibility
+export function getContextValues(options: SearchOptions): { contextBefore: number; contextAfter: number } {
+  // If new fields are specified, use them
+  if (options.contextBefore !== undefined || options.contextAfter !== undefined) {
+    return {
+      contextBefore: options.contextBefore ?? 2,
+      contextAfter: options.contextAfter ?? 2
+    }
+  }
+  
+  // Fall back to contextLines for backward compatibility
+  const contextLines = options.contextLines ?? 2
+  return {
+    contextBefore: contextLines,
+    contextAfter: contextLines
+  }
 }

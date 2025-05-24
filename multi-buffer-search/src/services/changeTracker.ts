@@ -46,18 +46,24 @@ export class ChangeTracker {
       const originalContent = this.originalContent.get(multiLine)
       if (originalContent !== undefined && currentContent !== originalContent) {
         const fileKey = excerpt.fileUri.toString()
-        if (!changesByFile.has(fileKey)) {
-          changesByFile.set(fileKey, {
+        let fileChange = changesByFile.get(fileKey)
+        if (!fileChange) {
+          fileChange = {
             uri: excerpt.fileUri,
             changes: []
-          })
+          }
+          changesByFile.set(fileKey, fileChange)
         }
         const sourceLineOffset = multiLine - excerpt.multiBufferRange.start.line
         const sourceLine = excerpt.sourceRange.start.line + sourceLineOffset
-        changesByFile.get(fileKey)!.changes.push({
+        
+        // Calculate the actual line length from the source document
+        const lineLength = excerpt.buffer.lineAt(sourceLine).text.length
+        
+        fileChange.changes.push({
           range: new vscode.Range(
             new vscode.Position(sourceLine, 0),
-            new vscode.Position(sourceLine, Number.MAX_SAFE_INTEGER)
+            new vscode.Position(sourceLine, lineLength)
           ),
           newText: currentContent,
           originalText: originalContent

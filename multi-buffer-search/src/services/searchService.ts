@@ -10,7 +10,7 @@
  */
 
 import * as vscode from 'vscode'
-import { SearchOptions, ExcerptInfo } from '../models/types'
+import { SearchOptions, ExcerptInfo, getContextValues } from '../models/types'
 import { Excerpt } from '../models/excerpt'
 
 export class SearchService {
@@ -49,10 +49,12 @@ export class SearchService {
 
     for (const [uriString, fileMatches] of matchesByFile) {
       const uri = vscode.Uri.parse(uriString)
+      const { contextBefore, contextAfter } = getContextValues(options)
       const excerpts = await this.createExcerptsForFile(
         uri,
         fileMatches,
-        options.contextLines || SearchService.DEFAULT_CONTEXT_LINES
+        contextBefore,
+        contextAfter
       )
       if (excerpts.length > 0) {
         results.set(uri, excerpts)
@@ -84,7 +86,8 @@ export class SearchService {
   private async createExcerptsForFile(
     uri: vscode.Uri,
     matches: vscode.TextSearchMatch[],
-    contextLines: number
+    contextBefore: number,
+    contextAfter: number
   ): Promise<ExcerptInfo[]> {
     const document = await vscode.workspace.openTextDocument(uri)
     const excerpts: ExcerptInfo[] = []
@@ -97,7 +100,8 @@ export class SearchService {
 
     const mergedRanges = this.mergeOverlappingRanges(
       matches.map(m => m.ranges[0] || m.range),
-      contextLines,
+      contextBefore,
+      contextAfter,
       document.lineCount
     )
 
@@ -108,8 +112,8 @@ export class SearchService {
         document,
         range,
         new vscode.Range(0, 0, 0, 0),
-        contextLines,
-        contextLines,
+        contextBefore,
+        contextAfter,
         true,
         document.getText(range)
       )
@@ -121,16 +125,17 @@ export class SearchService {
 
   private mergeOverlappingRanges(
     ranges: vscode.Range[],
-    contextLines: number,
+    contextBefore: number,
+    contextAfter: number,
     maxLine: number
   ): vscode.Range[] {
     if (ranges.length === 0) return []
 
     const merged: vscode.Range[] = []
-    let current = this.expandRange(ranges[0], contextLines, maxLine)
+    let current = this.expandRange(ranges[0], contextBefore, contextAfter, maxLine)
 
     for (let i = 1; i < ranges.length; i++) {
-      const expanded = this.expandRange(ranges[i], contextLines, maxLine)
+      const expanded = this.expandRange(ranges[i], contextBefore, contextAfter, maxLine)
       if (current.end.line >= expanded.start.line - 1) {
         current = new vscode.Range(current.start, expanded.end)
       } else {
@@ -145,11 +150,12 @@ export class SearchService {
 
   private expandRange(
     range: vscode.Range,
-    contextLines: number,
+    contextBefore: number,
+    contextAfter: number,
     maxLine: number
   ): vscode.Range {
-    const startLine = Math.max(0, range.start.line - contextLines)
-    const endLine = Math.min(maxLine - 1, range.end.line + contextLines)
+    const startLine = Math.max(0, range.start.line - contextBefore)
+    const endLine = Math.min(maxLine - 1, range.end.line + contextAfter)
     return new vscode.Range(
       new vscode.Position(startLine, 0),
       new vscode.Position(endLine, Number.MAX_SAFE_INTEGER)

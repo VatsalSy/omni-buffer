@@ -24,6 +24,15 @@ export class MultiBufferProvider implements vscode.TextDocumentContentProvider {
 
   addDocument(doc: MultiBufferDocument): void {
     this.documents.set(doc.uri.toString(), doc)
+    this._onDidChange.fire(doc.uri)
+  }
+
+  updateDocument(uri: vscode.Uri, updater: (doc: MultiBufferDocument) => void): void {
+    const doc = this.documents.get(uri.toString())
+    if (doc) {
+      updater(doc)
+      this._onDidChange.fire(uri)
+    }
   }
 
   getDocument(uri: vscode.Uri): MultiBufferDocument | undefined {
@@ -32,8 +41,11 @@ export class MultiBufferProvider implements vscode.TextDocumentContentProvider {
 
   removeDocument(uri: vscode.Uri): void {
     const key = uri.toString()
-    this.documents.delete(key)
-    this.changeTrackers.delete(key)
+    if (this.documents.has(key)) {
+      this.documents.delete(key)
+      this.changeTrackers.delete(key)
+      this._onDidChange.fire(uri)
+    }
   }
 
   setChangeTracker(uri: vscode.Uri, tracker: ChangeTracker): void {
@@ -45,8 +57,14 @@ export class MultiBufferProvider implements vscode.TextDocumentContentProvider {
   }
 
   dispose(): void {
-    this.documents.clear()
-    this.changeTrackers.clear()
-    this._onDidChange.dispose()
+    if (this.documents) {
+      this.documents.clear()
+    }
+    if (this.changeTrackers) {
+      this.changeTrackers.clear()
+    }
+    if (this._onDidChange) {
+      this._onDidChange.dispose()
+    }
   }
 }
