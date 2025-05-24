@@ -52,13 +52,22 @@ export class ResultFormatter {
         const startLine = currentLine
         lines.push(...formattedExcerpt.lines)
         lines.push('')
-        excerpt.multiBufferRange = new vscode.Range(
-          new vscode.Position(startLine, 0),
-          new vscode.Position(
-            startLine + formattedExcerpt.lines.length - 1,
-            formattedExcerpt.lines[formattedExcerpt.lines.length - 1].length
+        
+        // Handle empty lines case
+        if (formattedExcerpt.lines.length > 0) {
+          const lastLineIndex = formattedExcerpt.lines.length - 1
+          const lastLineLength = formattedExcerpt.lines[lastLineIndex].length
+          excerpt.multiBufferRange = new vscode.Range(
+            new vscode.Position(startLine, 0),
+            new vscode.Position(startLine + lastLineIndex, lastLineLength)
           )
-        )
+        } else {
+          // Set a default range for empty content
+          excerpt.multiBufferRange = new vscode.Range(
+            new vscode.Position(startLine, 0),
+            new vscode.Position(startLine, 0)
+          )
+        }
         for (let i = 0; i < formattedExcerpt.matchLineIndices.length; i++) {
           const multiLine = startLine + formattedExcerpt.matchLineIndices[i]
           mapping.lineToExcerpt.set(multiLine, excerpt)
@@ -103,7 +112,17 @@ export class ResultFormatter {
   ): { lines: string[]; matchLineIndices: number[] } {
     const lines: string[] = []
     const matchLineIndices: number[] = []
-    const contextRange = excerpt.getContextRange()
+    
+    // Calculate context range inline since ExcerptInfo doesn't have getContextRange method
+    const startLine = Math.max(0, excerpt.sourceRange.start.line - excerpt.contextBefore)
+    const endLine = Math.min(
+      excerpt.buffer.lineCount - 1,
+      excerpt.sourceRange.end.line + excerpt.contextAfter
+    )
+    const contextRange = new vscode.Range(
+      new vscode.Position(startLine, 0),
+      new vscode.Position(endLine, excerpt.buffer.lineAt(endLine).text.length)
+    )
     const document = excerpt.buffer
 
     for (
