@@ -81,7 +81,10 @@ export function validateMultiBufferMapping(mapping: MultiBufferMapping): Validat
     if (!fileExcerptMap.has(filePath)) {
       fileExcerptMap.set(filePath, new Set())
     }
-    fileExcerptMap.get(filePath)!.add(id)
+    const excerptSet = fileExcerptMap.get(filePath)
+    if (excerptSet) {
+      excerptSet.add(id)
+    }
   }
   
   for (const [filePath, expectedIds] of fileExcerptMap) {

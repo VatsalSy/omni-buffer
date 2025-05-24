@@ -68,7 +68,10 @@ export class ResultFormatter {
         if (!mapping.excerptsByFile.has(fileKey)) {
           mapping.excerptsByFile.set(fileKey, [])
         }
-        mapping.excerptsByFile.get(fileKey)!.push(excerpt)
+        const excerpts = mapping.excerptsByFile.get(fileKey)
+        if (excerpts) {
+          excerpts.push(excerpt)
+        }
         currentLine += formattedExcerpt.lines.length + 1
       }
     }

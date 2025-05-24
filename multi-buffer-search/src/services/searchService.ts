@@ -44,7 +44,10 @@ export class SearchService {
       if (!matchesByFile.has(key)) {
         matchesByFile.set(key, [])
       }
-      matchesByFile.get(key)!.push(match)
+      const matches = matchesByFile.get(key)
+      if (matches) {
+        matches.push(match)
+      }
     }
 
     for (const [uriString, fileMatches] of matchesByFile) {
