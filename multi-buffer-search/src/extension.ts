@@ -12,16 +12,26 @@ import { SearchCommand } from './commands/searchCommand'
 import { ReplaceCommand } from './commands/replaceCommand'
 import { ApplyChangesCommand } from './commands/applyChangesCommand'
 import { SearchService } from './services/searchService'
+import { IncrementalSearchService } from './services/incrementalSearchService'
 import { ResultFormatter } from './services/resultFormatter'
 import { DecorationService } from './services/decorationService'
 import { MultiBufferProvider } from './multiBufferProvider'
 
 let decorationService: DecorationService | undefined
 let multiBufferProvider: MultiBufferProvider | undefined
+let searchService: SearchService | undefined
 
 export function activate(context: vscode.ExtensionContext) {
   console.log('Multi-Buffer Search extension is now active')
-  const searchService = new SearchService()
+  
+  // Check if incremental updates are enabled
+  const config = vscode.workspace.getConfiguration('multiBufferSearch')
+  const useIncremental = config.get<boolean>('incrementalUpdates.enabled', false)
+  
+  searchService = useIncremental 
+    ? new IncrementalSearchService() 
+    : new SearchService()
+  
   const formatter = new ResultFormatter()
   decorationService = new DecorationService()
   multiBufferProvider = new MultiBufferProvider()
@@ -123,4 +133,9 @@ async function openSourceFile(): Promise<void> {
 export function deactivate() {
   decorationService?.dispose()
   multiBufferProvider?.dispose()
+  
+  // Dispose incremental search service if it exists
+  if (searchService && 'dispose' in searchService) {
+    (searchService as IncrementalSearchService).dispose()
+  }
 }

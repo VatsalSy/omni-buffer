@@ -88,6 +88,18 @@
           "minimum": 0,
           "maximum": 10,
           "description": "Number of context lines to show after search results (overrides contextLines)"
+        },
+        "multiBufferSearch.incrementalUpdates.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable incremental search updates (experimental)"
+        },
+        "multiBufferSearch.incrementalUpdates.debounceDelay": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 2000,
+          "description": "Delay in milliseconds before processing incremental updates"
         }
       }
     }

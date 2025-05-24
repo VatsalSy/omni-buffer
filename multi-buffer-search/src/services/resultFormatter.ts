@@ -157,8 +157,7 @@ export class ResultFormatter {
   }
 
   private formatLineNumber(lineNum: number): string {
-    return lineNum.toString().padStart(ResultFormatter.LINE_NUMBER_WIDTH, ' ') +
-      ' '
+    return `${lineNum.toString().padStart(ResultFormatter.LINE_NUMBER_WIDTH, ' ')} `
   }
 
   private applyReplacement(

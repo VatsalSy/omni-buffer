@@ -16,6 +16,8 @@ export class DecorationService {
   private matchTextDecoration: vscode.TextEditorDecorationType
   private contextLineDecoration: vscode.TextEditorDecorationType
   private lineNumberDecoration: vscode.TextEditorDecorationType
+  // Line format: 6 chars for line number + 1 space + 2 chars for prefix = 9 total
+  private static readonly CONTENT_START_INDEX = 9
 
   constructor() {
     this.fileHeaderDecoration = vscode.window.createTextEditorDecorationType({
@@ -105,39 +107,79 @@ export class DecorationService {
   ): vscode.DecorationOptions[] {
     const decorations: vscode.DecorationOptions[] = []
     const lineText = line.text
-    const contentStart = lineText.search(/\S/) + 8
+    
+    // Dynamically calculate content start based on actual format
+    // First, skip the line number and space (7 chars), then find where content begins after prefix
+    let contentStart = DecorationService.CONTENT_START_INDEX
+    if (lineText.length >= 7) {
+      // Look for content after the line number and prefix pattern
+      const afterLineNum = lineText.substring(7)
+      const prefixMatch = afterLineNum.match(/^(\s{2}|\s\s)/)
+      if (prefixMatch) {
+        contentStart = 7 + prefixMatch[0].length
+      }
+    }
+    contentStart = Math.min(contentStart, lineText.length)
     const content = lineText.substring(contentStart)
 
     if (isRegex) {
-      const flags = isCaseSensitive ? 'g' : 'gi'
-      const regex = new RegExp(query, flags)
-      let match
-      while ((match = regex.exec(content)) !== null) {
-        const startPos = new vscode.Position(
-          line.lineNumber,
-          contentStart + match.index
-        )
-        const endPos = new vscode.Position(
-          line.lineNumber,
-          contentStart + match.index + match[0].length
-        )
-        decorations.push({ range: new vscode.Range(startPos, endPos) })
+      try {
+        const flags = isCaseSensitive ? 'g' : 'gi'
+        const regex = new RegExp(query, flags)
+        let match
+        while ((match = regex.exec(content)) !== null) {
+          const startPos = new vscode.Position(
+            line.lineNumber,
+            contentStart + match.index
+          )
+          const endPos = new vscode.Position(
+            line.lineNumber,
+            contentStart + match.index + match[0].length
+          )
+          decorations.push({ range: new vscode.Range(startPos, endPos) })
+        }
+      } catch (error) {
+        // Invalid regex pattern - return empty decorations
+        console.warn(`Invalid regex pattern: ${query}`, error)
+        return decorations
       }
     } else {
-      const searchStr = isCaseSensitive ? query : query.toLowerCase()
-      const searchContent = isCaseSensitive ? content : content.toLowerCase()
-      let index = 0
-      while ((index = searchContent.indexOf(searchStr, index)) !== -1) {
-        const startPos = new vscode.Position(
-          line.lineNumber,
-          contentStart + index
-        )
-        const endPos = new vscode.Position(
-          line.lineNumber,
-          contentStart + index + query.length
-        )
-        decorations.push({ range: new vscode.Range(startPos, endPos) })
-        index += query.length
+      // Use locale-aware comparison for case-insensitive matching
+      if (isCaseSensitive) {
+        let index = 0
+        while ((index = content.indexOf(query, index)) !== -1) {
+          const startPos = new vscode.Position(
+            line.lineNumber,
+            contentStart + index
+          )
+          const endPos = new vscode.Position(
+            line.lineNumber,
+            contentStart + index + query.length
+          )
+          decorations.push({ range: new vscode.Range(startPos, endPos) })
+          index += query.length
+        }
+      } else {
+        // Use locale-aware case-insensitive search
+        const collator = new Intl.Collator(undefined, { sensitivity: 'base' })
+        const queryLen = query.length
+        
+        for (let i = 0; i <= content.length - queryLen; i++) {
+          const substring = content.substring(i, i + queryLen)
+          if (collator.compare(substring, query) === 0) {
+            const startPos = new vscode.Position(
+              line.lineNumber,
+              contentStart + i
+            )
+            const endPos = new vscode.Position(
+              line.lineNumber,
+              contentStart + i + queryLen
+            )
+            decorations.push({ range: new vscode.Range(startPos, endPos) })
+            // Skip past this match
+            i += queryLen - 1
+          }
+        }
       }
     }
 

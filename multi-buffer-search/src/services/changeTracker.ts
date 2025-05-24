@@ -23,6 +23,8 @@ export interface TextChange {
 
 export class ChangeTracker {
   private originalContent: Map<number, string> = new Map()
+  // Line format: 6 chars for line number + 1 space + 2 chars for prefix = 9 total
+  private static readonly CONTENT_START_INDEX = 9
 
   initialize(document: vscode.TextDocument, mapping: MultiBufferMapping): void {
     for (const [lineNum, excerpt] of mapping.lineToExcerpt) {
@@ -75,34 +77,60 @@ export class ChangeTracker {
   }
 
   private extractContent(lineText: string): string {
-    const contentStart = Math.min(8, lineText.length)
+    const contentStart = Math.min(ChangeTracker.CONTENT_START_INDEX, lineText.length)
     return lineText.substring(contentStart).trim()
   }
 
   async applyChanges(changes: Map<string, FileChange>): Promise<void> {
     const edit = new vscode.WorkspaceEdit()
+    const documentCache = new Map<string, vscode.TextDocument>()
+    
+    // First pass: build edits and cache documents
     for (const [, fileChange] of changes) {
-      const document = await vscode.workspace.openTextDocument(fileChange.uri)
+      let document: vscode.TextDocument
+      try {
+        document = await vscode.workspace.openTextDocument(fileChange.uri)
+        documentCache.set(fileChange.uri.toString(), document)
+      } catch (error) {
+        throw new Error(`Failed to open document ${fileChange.uri.fsPath}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+      
       for (const change of fileChange.changes) {
-        const originalLine = document.lineAt(change.range.start.line)
-        const leadingWhitespace = originalLine.text.match(/^\s*/)?.[0] || ''
-        edit.replace(
-          fileChange.uri,
-          originalLine.range,
-          leadingWhitespace + change.newText
-        )
+        try {
+          const originalLine = document.lineAt(change.range.start.line)
+          const leadingWhitespace = originalLine.text.match(/^\s*/)?.[0] || ''
+          edit.replace(
+            fileChange.uri,
+            originalLine.range,
+            leadingWhitespace + change.newText
+          )
+        } catch (error) {
+          throw new Error(`Failed to prepare edit for ${fileChange.uri.fsPath} at line ${change.range.start.line + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
       }
     }
+    
+    // Apply all edits
     const success = await vscode.workspace.applyEdit(edit)
     if (!success) {
-      throw new Error('Failed to apply changes to workspace')
+      const fileList = Array.from(changes.values()).map(fc => fc.uri.fsPath).join(', ')
+      throw new Error(`Failed to apply changes to workspace. Affected files: ${fileList}`)
     }
-    const savedFiles: vscode.Uri[] = []
+    
+    // Save all modified documents using cached references
+    const savedFiles = new Set<string>()
     for (const [, fileChange] of changes) {
-      if (!savedFiles.find(u => u.toString() === fileChange.uri.toString())) {
-        const document = await vscode.workspace.openTextDocument(fileChange.uri)
-        await document.save()
-        savedFiles.push(fileChange.uri)
+      const fileKey = fileChange.uri.toString()
+      if (!savedFiles.has(fileKey)) {
+        const document = documentCache.get(fileKey)
+        if (document) {
+          try {
+            await document.save()
+            savedFiles.add(fileKey)
+          } catch (error) {
+            throw new Error(`Failed to save document ${fileChange.uri.fsPath}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+          }
+        }
       }
     }
   }

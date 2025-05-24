@@ -6,7 +6,8 @@
  * Author: Unknown
  * Update: Initial version
  *
- * TODO: Add support for incremental updates.
+ * TODO: Incremental updates have been implemented in IncrementalSearchService
+ * See INCREMENTAL_UPDATES.md for design and incrementalSearchService.ts for implementation
  */
 
 import * as vscode from 'vscode'
@@ -15,6 +16,34 @@ import { Excerpt } from '../models/excerpt'
 
 export class SearchService {
   private static readonly DEFAULT_CONTEXT_LINES = 2
+  
+  /**
+   * Placeholder range used temporarily when creating excerpts.
+   * This will be replaced with actual multi-buffer coordinates by the formatter.
+   */
+  private static readonly PLACEHOLDER_RANGE = new vscode.Range(0, 0, 0, 0)
+
+  /**
+   * Type guard to check if a result is a TextSearchMatch
+   */
+  private isTextSearchMatch(result: any): result is vscode.TextSearchMatch {
+    return (
+      result &&
+      typeof result === 'object' &&
+      'uri' in result &&
+      result.uri instanceof vscode.Uri &&
+      ('matches' in result || 'ranges' in result || 'range' in result) &&
+      (
+        (Array.isArray(result.matches) && result.matches.every((m: any) => 
+          m && typeof m === 'object' && 'range' in m
+        )) ||
+        (Array.isArray(result.ranges) && result.ranges.every((r: any) => 
+          r instanceof vscode.Range
+        )) ||
+        (result.range instanceof vscode.Range)
+      )
+    )
+  }
 
   async searchWorkspace(
     options: SearchOptions
@@ -31,9 +60,9 @@ export class SearchService {
         useIgnoreFiles: true,
         maxResults: options.maxResults
       },
-      result => {
-        if ('matches' in result && result.matches) {
-          matches.push(result as vscode.TextSearchMatch)
+      (result: vscode.TextSearchResult) => {
+        if (this.isTextSearchMatch(result)) {
+          matches.push(result)
         }
       }
     )
@@ -41,13 +70,12 @@ export class SearchService {
     const matchesByFile = new Map<string, vscode.TextSearchMatch[]>()
     for (const match of matches) {
       const key = match.uri.toString()
-      if (!matchesByFile.has(key)) {
-        matchesByFile.set(key, [])
+      let fileMatches = matchesByFile.get(key)
+      if (!fileMatches) {
+        fileMatches = []
+        matchesByFile.set(key, fileMatches)
       }
-      const matches = matchesByFile.get(key)
-      if (matches) {
-        matches.push(match)
-      }
+      fileMatches.push(match)
     }
 
     for (const [uriString, fileMatches] of matchesByFile) {
@@ -67,7 +95,7 @@ export class SearchService {
     return results
   }
 
-  private createSearchPattern(
+  protected createSearchPattern(
     options: SearchOptions
   ): vscode.TextSearchQuery {
     if (options.isRegex) {
@@ -86,7 +114,7 @@ export class SearchService {
     }
   }
 
-  private async createExcerptsForFile(
+  protected async createExcerptsForFile(
     uri: vscode.Uri,
     matches: vscode.TextSearchMatch[],
     contextBefore: number,
@@ -114,7 +142,7 @@ export class SearchService {
         uri,
         document,
         range,
-        new vscode.Range(0, 0, 0, 0),
+        SearchService.PLACEHOLDER_RANGE, // Temporary placeholder - will be updated by formatter
         contextBefore,
         contextAfter,
         true,
@@ -126,7 +154,7 @@ export class SearchService {
     return excerpts
   }
 
-  private mergeOverlappingRanges(
+  protected mergeOverlappingRanges(
     ranges: vscode.Range[],
     contextBefore: number,
     contextAfter: number,
@@ -151,7 +179,7 @@ export class SearchService {
     return merged
   }
 
-  private expandRange(
+  protected expandRange(
     range: vscode.Range,
     contextBefore: number,
     contextAfter: number,

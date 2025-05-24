@@ -9,6 +9,7 @@
 
 import * as vscode from 'vscode'
 import { SearchService } from '../services/searchService'
+import { IncrementalSearchService } from '../services/incrementalSearchService'
 import { ResultFormatter } from '../services/resultFormatter'
 import { DecorationService } from '../services/decorationService'
 import { ChangeTracker } from '../services/changeTracker'
@@ -34,7 +35,11 @@ export class SearchCommand {
           cancellable: true
         },
         async (progress, token) => {
-          const results = await this.searchService.searchWorkspace(options)
+          // Use incremental search if the service supports it
+          const results = this.searchService instanceof IncrementalSearchService
+            ? (await this.searchService.searchWorkspaceIncremental(options)).all
+            : await this.searchService.searchWorkspace(options)
+          
           if (token.isCancellationRequested) return
           if (results.size === 0) {
             vscode.window.showInformationMessage('No results found')
@@ -85,7 +90,7 @@ export class SearchCommand {
   }
 
   private async getSearchOptions(): Promise<SearchOptions | undefined> {
-    const quickPickItems = [
+    const quickPickItems: Array<{ label: string; picked: boolean; flag: string }> = [
       { label: 'Case Sensitive', picked: false, flag: 'caseSensitive' },
       { label: 'Regular Expression', picked: false, flag: 'regex' },
       { label: 'Whole Word', picked: false, flag: 'wholeWord' }
@@ -94,16 +99,16 @@ export class SearchCommand {
       canPickMany: true,
       placeHolder: 'Select search options'
     })
-    const flags =
+    const flags: Record<string, boolean> =
       selectedItems?.reduce((acc, item) => {
         acc[item.flag] = true
         return acc
-      }, {} as any) || {}
+      }, {} as Record<string, boolean>) || {}
     
     const query = await vscode.window.showInputBox({
       prompt: 'Search query',
       placeHolder: 'Enter search text or regex',
-      validateInput: value => {
+      validateInput: (value: string) => {
         if (!value.trim()) return 'Search query cannot be empty'
         
         // Validate regex syntax if regex option is selected
@@ -111,7 +116,7 @@ export class SearchCommand {
           try {
             new RegExp(value)
           } catch (error) {
-            return `Invalid regular expression: ${error.message}`
+            return `Invalid regular expression: ${error instanceof Error ? error.message : 'Unknown error'}`
           }
         }
         
