@@ -94,18 +94,30 @@ async function openSourceFile(): Promise<void> {
   if (!excerpt) return
   const lineOffset = position.line - excerpt.multiBufferRange.start.line
   const sourceLine = excerpt.sourceRange.start.line + lineOffset
-  const sourceDoc = await vscode.workspace.openTextDocument(excerpt.fileUri)
-  const sourceEditor = await vscode.window.showTextDocument(sourceDoc, {
-    preview: false,
-    selection: new vscode.Range(
-      new vscode.Position(sourceLine, 0),
-      new vscode.Position(sourceLine, 0)
+  
+  try {
+    const sourceDoc = await vscode.workspace.openTextDocument(excerpt.fileUri)
+    
+    // Validate that sourceLine is within bounds
+    if (sourceLine < 0 || sourceLine >= sourceDoc.lineCount) {
+      vscode.window.showErrorMessage(`Line ${sourceLine + 1} is out of bounds in source file`)
+      return
+    }
+    
+    const sourceEditor = await vscode.window.showTextDocument(sourceDoc, {
+      preview: false,
+      selection: new vscode.Range(
+        new vscode.Position(sourceLine, 0),
+        new vscode.Position(sourceLine, 0)
+      )
+    })
+    sourceEditor.selection = new vscode.Selection(
+      new vscode.Position(sourceLine, position.character),
+      new vscode.Position(sourceLine, position.character)
     )
-  })
-  sourceEditor.selection = new vscode.Selection(
-    new vscode.Position(sourceLine, position.character),
-    new vscode.Position(sourceLine, position.character)
-  )
+  } catch (error) {
+    vscode.window.showErrorMessage(`Failed to open source file: ${error instanceof Error ? error.message : 'Unknown error'}`)
+  }
 }
 
 export function deactivate() {
