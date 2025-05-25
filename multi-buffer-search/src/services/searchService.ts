@@ -114,6 +114,25 @@ export class SearchService {
     }
   }
 
+  /**
+   * Extracts the primary range from a TextSearchMatch.
+   * TextSearchMatch can have either:
+   * - ranges: Array of Range objects (for matches with multiple selections)
+   * - range: Single Range object (for simple matches)
+   */
+  private getPrimaryRange(match: vscode.TextSearchMatch): vscode.Range {
+    // Prefer ranges array if it exists and has elements
+    if (match.ranges && Array.isArray(match.ranges) && match.ranges.length > 0) {
+      return match.ranges[0]
+    }
+    // Fall back to single range property
+    if (match.range) {
+      return match.range
+    }
+    // This should not happen with valid TextSearchMatch objects
+    throw new Error('TextSearchMatch has neither ranges nor range property')
+  }
+
   protected async createExcerptsForFile(
     uri: vscode.Uri,
     matches: vscode.TextSearchMatch[],
@@ -123,14 +142,18 @@ export class SearchService {
     const document = await vscode.workspace.openTextDocument(uri)
     const excerpts: ExcerptInfo[] = []
 
+    // Sort matches by line number for consistent output
     matches.sort((a, b) => {
-      const aLine = a.ranges[0]?.start.line || a.range.start.line
-      const bLine = b.ranges[0]?.start.line || b.range.start.line
-      return aLine - bLine
+      const aRange = this.getPrimaryRange(a)
+      const bRange = this.getPrimaryRange(b)
+      return aRange.start.line - bRange.start.line
     })
 
+    // Extract primary ranges from all matches
+    const primaryRanges = matches.map(match => this.getPrimaryRange(match))
+    
     const mergedRanges = this.mergeOverlappingRanges(
-      matches.map(m => m.ranges[0] || m.range),
+      primaryRanges,
       contextBefore,
       contextAfter,
       document.lineCount
