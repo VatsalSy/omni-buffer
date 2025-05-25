@@ -156,7 +156,7 @@ export class SearchService {
       primaryRanges,
       contextBefore,
       contextAfter,
-      document.lineCount
+      document
     )
 
     for (const range of mergedRanges) {
@@ -181,15 +181,15 @@ export class SearchService {
     ranges: vscode.Range[],
     contextBefore: number,
     contextAfter: number,
-    maxLine: number
+    document: vscode.TextDocument
   ): vscode.Range[] {
     if (ranges.length === 0) return []
 
     const merged: vscode.Range[] = []
-    let current = this.expandRange(ranges[0], contextBefore, contextAfter, maxLine)
+    let current = this.expandRange(ranges[0], contextBefore, contextAfter, document)
 
     for (let i = 1; i < ranges.length; i++) {
-      const expanded = this.expandRange(ranges[i], contextBefore, contextAfter, maxLine)
+      const expanded = this.expandRange(ranges[i], contextBefore, contextAfter, document)
       if (current.end.line >= expanded.start.line - 1) {
         current = new vscode.Range(current.start, expanded.end)
       } else {
@@ -206,13 +206,13 @@ export class SearchService {
     range: vscode.Range,
     contextBefore: number,
     contextAfter: number,
-    maxLine: number
+    document: vscode.TextDocument
   ): vscode.Range {
     const startLine = Math.max(0, range.start.line - contextBefore)
-    const endLine = Math.min(maxLine - 1, range.end.line + contextAfter)
+    const endLine = Math.min(document.lineCount - 1, range.end.line + contextAfter)
     return new vscode.Range(
       new vscode.Position(startLine, 0),
-      new vscode.Position(endLine, Number.MAX_SAFE_INTEGER)
+      document.lineAt(endLine).range.end
     )
   }
 }
