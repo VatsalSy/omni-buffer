@@ -8,13 +8,12 @@
  */
 
 import * as vscode from 'vscode'
-import { SearchCommand } from './searchCommand'
 import { SearchService } from '../services/searchService'
 import { ResultFormatter } from '../services/resultFormatter'
 import { DecorationService } from '../services/decorationService'
 import { ChangeTracker } from '../services/changeTracker'
-import { ReplaceOptions, MultiBufferDocument } from '../models/types'
-import { MultiBufferProvider } from '../multiBufferProvider'
+import { ReplaceOptions, OmniBufferDocument } from '../models/types'
+import { OmniBufferProvider } from '../omniBufferProvider'
 
 interface SearchFlags {
   caseSensitive?: boolean
@@ -26,7 +25,13 @@ interface QuickPickFlag extends vscode.QuickPickItem {
   flag: keyof SearchFlags
 }
 
-export class ReplaceCommand extends SearchCommand {
+export class ReplaceCommand {
+  constructor(
+    private readonly searchService: SearchService,
+    private readonly formatter: ResultFormatter,
+    private readonly decorationService: DecorationService,
+    private readonly omniBufferProvider: OmniBufferProvider
+  ) {}
   async execute(): Promise<void> {
     try {
       const options = await this.getReplaceOptions()
@@ -49,18 +54,18 @@ export class ReplaceCommand extends SearchCommand {
             options,
             options as ReplaceOptions
           )
-          const multiBufferDoc: MultiBufferDocument = {
+          const omniBufferDoc: OmniBufferDocument = {
             content,
             mapping,
             searchOptions: options,
             replaceOptions: options as ReplaceOptions,
             uri: vscode.Uri.parse(
-              `multibuffer:replace-${Date.now()}.multibuffer`
+              `omnibuffer:replace-${Date.now()}.omnibuffer`
             )
           }
-          this.multiBufferProvider.addDocument(multiBufferDoc)
+          this.omniBufferProvider.addDocument(omniBufferDoc)
           const document = await vscode.workspace.openTextDocument(
-            multiBufferDoc.uri
+            omniBufferDoc.uri
           )
           const editor = await vscode.window.showTextDocument(document, {
             preview: false,
@@ -68,8 +73,8 @@ export class ReplaceCommand extends SearchCommand {
           })
           const changeTracker = new ChangeTracker()
           changeTracker.initialize(document, mapping)
-          this.multiBufferProvider.setChangeTracker(
-            multiBufferDoc.uri,
+          this.omniBufferProvider.setChangeTracker(
+            omniBufferDoc.uri,
             changeTracker
           )
           this.decorationService.applyDecorations(
@@ -117,7 +122,7 @@ export class ReplaceCommand extends SearchCommand {
       return acc
     }, {}) || {}
     // Get context configuration
-    const config = vscode.workspace.getConfiguration('multiBufferSearch')
+    const config = vscode.workspace.getConfiguration('omniBuffer')
     const contextLines = config.get<number>('contextLines', 2)
     const contextBefore = config.get<number>('contextBefore')
     const contextAfter = config.get<number>('contextAfter')

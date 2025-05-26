@@ -1,7 +1,7 @@
 /**
  * # Result Formatter
  *
- * Converts excerpts to multi-buffer text.
+ * Converts excerpts to omni-buffer text.
  *
  * Author: Unknown
  * Update: Initial version
@@ -10,7 +10,7 @@
 import * as vscode from 'vscode'
 import {
   ExcerptInfo,
-  MultiBufferMapping,
+  OmniBufferMapping,
   SearchOptions,
   ReplaceOptions
 } from '../models/types'
@@ -25,9 +25,9 @@ export class ResultFormatter {
     excerptsByFile: Map<vscode.Uri, ExcerptInfo[]>,
     options: SearchOptions,
     replaceOptions?: ReplaceOptions
-  ): { content: string; mapping: MultiBufferMapping } {
+  ): { content: string; mapping: OmniBufferMapping } {
     const lines: string[] = []
-    const mapping: MultiBufferMapping = {
+    const mapping: OmniBufferMapping = {
       lineToExcerpt: new Map(),
       excerpts: new Map(),
       excerptsByFile: new Map()
@@ -57,20 +57,20 @@ export class ResultFormatter {
         if (formattedExcerpt.lines.length > 0) {
           const lastLineIndex = formattedExcerpt.lines.length - 1
           const lastLineLength = formattedExcerpt.lines[lastLineIndex].length
-          excerpt.multiBufferRange = new vscode.Range(
+          excerpt.omniBufferRange = new vscode.Range(
             new vscode.Position(startLine, 0),
             new vscode.Position(startLine + lastLineIndex, lastLineLength)
           )
         } else {
           // Set a default range for empty content
-          excerpt.multiBufferRange = new vscode.Range(
+          excerpt.omniBufferRange = new vscode.Range(
             new vscode.Position(startLine, 0),
             new vscode.Position(startLine, 0)
           )
         }
         for (let i = 0; i < formattedExcerpt.matchLineIndices.length; i++) {
-          const multiLine = startLine + formattedExcerpt.matchLineIndices[i]
-          mapping.lineToExcerpt.set(multiLine, excerpt)
+          const omniLine = startLine + formattedExcerpt.matchLineIndices[i]
+          mapping.lineToExcerpt.set(omniLine, excerpt)
         }
         mapping.excerpts.set(excerpt.id, excerpt)
         const fileKey = uri.toString()
@@ -93,11 +93,11 @@ export class ResultFormatter {
     replaceOptions?: ReplaceOptions
   ): string {
     if (replaceOptions) {
-      return `Multi-Buffer Replace: "${options.query}" → "${
+      return `Omni-Buffer Replace: "${options.query}" → "${
         replaceOptions.replacement
       }"`
     }
-    return `Multi-Buffer Search: "${options.query}"`
+    return `Omni-Buffer Search: "${options.query}"`
   }
 
   private formatFileHeader(uri: vscode.Uri): string {

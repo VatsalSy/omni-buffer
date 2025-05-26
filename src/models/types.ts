@@ -14,14 +14,14 @@ export interface ExcerptInfo {
   fileUri: vscode.Uri
   buffer: vscode.TextDocument
   sourceRange: vscode.Range
-  multiBufferRange: vscode.Range
+  omniBufferRange: vscode.Range
   contextBefore: number
   contextAfter: number
   isMatch: boolean
   originalText: string
 }
 
-export interface MultiBufferMapping {
+export interface OmniBufferMapping {
   lineToExcerpt: Map<number, ExcerptInfo>
   excerpts: Map<string, ExcerptInfo>
   excerptsByFile: Map<string, ExcerptInfo[]>
@@ -33,7 +33,7 @@ export interface ValidationResult {
   errors: string[]
 }
 
-export function validateMultiBufferMapping(mapping: MultiBufferMapping): ValidationResult {
+export function validateOmniBufferMapping(mapping: OmniBufferMapping): ValidationResult {
   const errors: string[] = []
   
   // Check that all excerpts in lineToExcerpt exist in excerpts map
@@ -121,9 +121,9 @@ export interface ReplaceOptions extends SearchOptions {
   replacement: string
 }
 
-export interface MultiBufferDocument {
+export interface OmniBufferDocument {
   content: string
-  mapping: MultiBufferMapping
+  mapping: OmniBufferMapping
   searchOptions: SearchOptions
   replaceOptions?: ReplaceOptions
   uri: vscode.Uri

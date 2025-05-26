@@ -1,0 +1,29 @@
+{
+  "scopeName": "source.omnibuffer",
+  "name": "Omni-Buffer",
+  "patterns": [
+    {
+      "name": "meta.header.omnibuffer",
+      "match": "^Omni-Buffer (Search|Replace):.*$",
+      "captures": {
+        "0": { "name": "markup.heading.omnibuffer" }
+      }
+    },
+    {
+      "name": "meta.file-header.omnibuffer",
+      "match": "^=== (.+)$",
+      "captures": {
+        "0": { "name": "entity.name.filename.omnibuffer" },
+        "1": { "name": "string.filename.omnibuffer" }
+      }
+    },
+    {
+      "name": "meta.line-number.omnibuffer",
+      "match": "^\\s*(\\d+)\\s+(.*)$",
+      "captures": {
+        "1": { "name": "constant.numeric.line-number.omnibuffer" },
+        "2": { "name": "source.embedded" }
+      }
+    }
+  ]
+}

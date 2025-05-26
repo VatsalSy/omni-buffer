@@ -1,14 +1,14 @@
 /**
  * # Change Tracker
  *
- * Tracks edits made to multi-buffer documents.
+ * Tracks edits made to omni-buffer documents.
  *
  * Author: Unknown
  * Update: Initial version
  */
 
 import * as vscode from 'vscode'
-import { MultiBufferMapping, ExcerptInfo } from '../models/types'
+import { OmniBufferMapping, ExcerptInfo } from '../models/types'
 
 export interface FileChange {
   uri: vscode.Uri
@@ -26,7 +26,7 @@ export class ChangeTracker {
   // Line format: 6 chars for line number + 1 space + 2 chars for prefix = 9 total
   private static readonly CONTENT_START_INDEX = 9
 
-  initialize(document: vscode.TextDocument, mapping: MultiBufferMapping): void {
+  initialize(document: vscode.TextDocument, mapping: OmniBufferMapping): void {
     for (const [lineNum, excerpt] of mapping.lineToExcerpt) {
       if (excerpt.isMatch) {
         const line = document.lineAt(lineNum)
@@ -37,15 +37,15 @@ export class ChangeTracker {
 
   computeChanges(
     document: vscode.TextDocument,
-    mapping: MultiBufferMapping
+    mapping: OmniBufferMapping
   ): Map<string, FileChange> {
     const changesByFile = new Map<string, FileChange>()
 
-    for (const [multiLine, excerpt] of mapping.lineToExcerpt) {
+    for (const [omniLine, excerpt] of mapping.lineToExcerpt) {
       if (!excerpt.isMatch) continue
-      const currentLine = document.lineAt(multiLine)
+      const currentLine = document.lineAt(omniLine)
       const currentContent = this.extractContent(currentLine.text)
-      const originalContent = this.originalContent.get(multiLine)
+      const originalContent = this.originalContent.get(omniLine)
       if (originalContent !== undefined && currentContent !== originalContent) {
         const fileKey = excerpt.fileUri.toString()
         let fileChange = changesByFile.get(fileKey)
@@ -56,7 +56,7 @@ export class ChangeTracker {
           }
           changesByFile.set(fileKey, fileChange)
         }
-        const sourceLineOffset = multiLine - excerpt.multiBufferRange.start.line
+        const sourceLineOffset = omniLine - excerpt.omniBufferRange.start.line
         const sourceLine = excerpt.sourceRange.start.line + sourceLineOffset
         
         // Calculate the actual line length from the source document

@@ -15,17 +15,17 @@ import { SearchService } from './services/searchService'
 import { IncrementalSearchService } from './services/incrementalSearchService'
 import { ResultFormatter } from './services/resultFormatter'
 import { DecorationService } from './services/decorationService'
-import { MultiBufferProvider } from './multiBufferProvider'
+import { OmniBufferProvider } from './omniBufferProvider'
 
 let decorationService: DecorationService | undefined
-let multiBufferProvider: MultiBufferProvider | undefined
+let omniBufferProvider: OmniBufferProvider | undefined
 let searchService: SearchService | undefined
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('Multi-Buffer Search extension is now active')
+  console.log('Omni-Buffer Search extension is now active')
   
   // Check if incremental updates are enabled
-  const config = vscode.workspace.getConfiguration('multiBufferSearch')
+  const config = vscode.workspace.getConfiguration('omniBuffer')
   const useIncremental = config.get<boolean>('incrementalUpdates.enabled', false)
   
   searchService = useIncremental 
@@ -34,57 +34,57 @@ export function activate(context: vscode.ExtensionContext) {
   
   const formatter = new ResultFormatter()
   decorationService = new DecorationService()
-  multiBufferProvider = new MultiBufferProvider()
+  omniBufferProvider = new OmniBufferProvider()
   const providerRegistration = vscode.workspace.registerTextDocumentContentProvider(
-    'multibuffer',
-    multiBufferProvider
+    'omnibuffer',
+    omniBufferProvider
   )
   context.subscriptions.push(providerRegistration)
   const searchCommand = new SearchCommand(
     searchService,
     formatter,
     decorationService,
-    multiBufferProvider
+    omniBufferProvider
   )
   const replaceCommand = new ReplaceCommand(
     searchService,
     formatter,
     decorationService,
-    multiBufferProvider
+    omniBufferProvider
   )
-  const applyChangesCommand = new ApplyChangesCommand(multiBufferProvider)
+  const applyChangesCommand = new ApplyChangesCommand(omniBufferProvider)
   context.subscriptions.push(
-    vscode.commands.registerCommand('multiBufferSearch.search', () =>
+    vscode.commands.registerCommand('omniBuffer.search', () =>
       searchCommand.execute()
     ),
-    vscode.commands.registerCommand('multiBufferSearch.replace', () =>
+    vscode.commands.registerCommand('omniBuffer.replace', () =>
       replaceCommand.execute()
     ),
-    vscode.commands.registerCommand('multiBufferSearch.applyChanges', () =>
+    vscode.commands.registerCommand('omniBuffer.applyChanges', () =>
       applyChangesCommand.execute()
     ),
-    vscode.commands.registerCommand('multiBufferSearch.openSourceFile', () =>
+    vscode.commands.registerCommand('omniBuffer.openSourceFile', () =>
       openSourceFile()
     )
   )
   context.subscriptions.push(
     vscode.workspace.onDidCloseTextDocument(doc => {
-      if (doc.uri.scheme === 'multibuffer') {
-        multiBufferProvider?.removeDocument(doc.uri)
+      if (doc.uri.scheme === 'omnibuffer') {
+        omniBufferProvider?.removeDocument(doc.uri)
       }
     })
   )
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(editor => {
-      if (editor && editor.document.uri.scheme === 'multibuffer') {
-        const multiBufferDoc = multiBufferProvider?.getDocument(
+      if (editor && editor.document.uri.scheme === 'omnibuffer') {
+        const omniBufferDoc = omniBufferProvider?.getDocument(
           editor.document.uri
         )
-        if (multiBufferDoc && decorationService) {
+        if (omniBufferDoc && decorationService) {
           decorationService.applyDecorations(
             editor,
-            multiBufferDoc.mapping,
-            multiBufferDoc.searchOptions
+            omniBufferDoc.mapping,
+            omniBufferDoc.searchOptions
           )
         }
       }
@@ -94,15 +94,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 async function openSourceFile(): Promise<void> {
   const editor = vscode.window.activeTextEditor
-  if (!editor || !editor.document.uri.scheme.startsWith('multibuffer')) {
+  if (!editor || !editor.document.uri.scheme.startsWith('omnibuffer')) {
     return
   }
   const position = editor.selection.active
-  const multiBufferDoc = multiBufferProvider?.getDocument(editor.document.uri)
-  if (!multiBufferDoc) return
-  const excerpt = multiBufferDoc.mapping.lineToExcerpt.get(position.line)
+  const omniBufferDoc = omniBufferProvider?.getDocument(editor.document.uri)
+  if (!omniBufferDoc) return
+  const excerpt = omniBufferDoc.mapping.lineToExcerpt.get(position.line)
   if (!excerpt) return
-  const lineOffset = position.line - excerpt.multiBufferRange.start.line
+  const lineOffset = position.line - excerpt.omniBufferRange.start.line
   const sourceLine = excerpt.sourceRange.start.line + lineOffset
   
   try {
@@ -132,7 +132,7 @@ async function openSourceFile(): Promise<void> {
 
 export function deactivate() {
   decorationService?.dispose()
-  multiBufferProvider?.dispose()
+  omniBufferProvider?.dispose()
   
   // Dispose incremental search service if it exists
   if (searchService && 'dispose' in searchService) {

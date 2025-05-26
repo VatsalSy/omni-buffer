@@ -1,7 +1,7 @@
 {
-  "name": "multi-buffer-search",
-  "displayName": "Multi-Buffer Search",
-  "description": "Zed-style multi-buffer search and edit for VS Code",
+  "name": "omni-buffer",
+  "displayName": "Omni-Buffer",
+  "description": "Zed-style omni-buffer search and edit for VS Code",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.74.0"
@@ -9,92 +9,92 @@
   "categories": ["Other"],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onCommand:multiBufferSearch.search",
-    "onCommand:multiBufferSearch.replace",
-    "onCommand:multiBufferSearch.applyChanges",
-    "onCommand:multiBufferSearch.openSourceFile"
+    "onCommand:omniBuffer.search",
+    "onCommand:omniBuffer.replace",
+    "onCommand:omniBuffer.applyChanges",
+    "onCommand:omniBuffer.openSourceFile"
   ],
   "contributes": {
     "commands": [
       {
-        "command": "multiBufferSearch.search",
-        "title": "Multi-Buffer Search",
-        "category": "Multi-Buffer"
+        "command": "omniBuffer.search",
+        "title": "Omni-Buffer Search",
+        "category": "Omni-Buffer"
       },
       {
-        "command": "multiBufferSearch.replace",
-        "title": "Multi-Buffer Search & Replace",
-        "category": "Multi-Buffer"
+        "command": "omniBuffer.replace",
+        "title": "Omni-Buffer Search & Replace",
+        "category": "Omni-Buffer"
       },
       {
-        "command": "multiBufferSearch.applyChanges",
-        "title": "Apply Multi-Buffer Changes",
-        "category": "Multi-Buffer",
-        "when": "resourceExtname == .multibuffer"
+        "command": "omniBuffer.applyChanges",
+        "title": "Apply Omni-Buffer Changes",
+        "category": "Omni-Buffer",
+        "when": "resourceExtname == .omnibuffer"
       },
       {
-        "command": "multiBufferSearch.openSourceFile",
+        "command": "omniBuffer.openSourceFile",
         "title": "Open Source File",
-        "category": "Multi-Buffer",
-        "when": "resourceExtname == .multibuffer"
+        "category": "Omni-Buffer",
+        "when": "resourceExtname == .omnibuffer"
       }
     ],
     "keybindings": [
       {
-        "command": "multiBufferSearch.applyChanges",
+        "command": "omniBuffer.applyChanges",
         "key": "ctrl+s",
         "mac": "cmd+s",
-        "when": "resourceExtname == .multibuffer"
+        "when": "resourceExtname == .omnibuffer"
       },
       {
-        "command": "multiBufferSearch.openSourceFile",
+        "command": "omniBuffer.openSourceFile",
         "key": "f12",
-        "when": "resourceExtname == .multibuffer"
+        "when": "resourceExtname == .omnibuffer"
       }
     ],
     "languages": [
       {
-        "id": "multibuffer",
-        "aliases": ["Multi-Buffer Results"],
-        "extensions": [".multibuffer"],
+        "id": "omnibuffer",
+        "aliases": ["Omni-Buffer Results"],
+        "extensions": [".omnibuffer"],
         "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-        "language": "multibuffer",
-        "scopeName": "source.multibuffer",
-        "path": "./syntaxes/multibuffer.tmGrammar.json"
+        "language": "omnibuffer",
+        "scopeName": "source.omnibuffer",
+        "path": "./syntaxes/omnibuffer.tmGrammar.json"
       }
     ],
     "configuration": {
-      "title": "Multi-Buffer Search",
+      "title": "Omni-Buffer",
       "properties": {
-        "multiBufferSearch.contextLines": {
+        "omniBuffer.contextLines": {
           "type": "number",
           "default": 2,
           "minimum": 0,
           "maximum": 10,
           "description": "Number of context lines to show above and below search results (deprecated: use contextBefore/contextAfter)"
         },
-        "multiBufferSearch.contextBefore": {
+        "omniBuffer.contextBefore": {
           "type": "number",
           "minimum": 0,
           "maximum": 10,
           "description": "Number of context lines to show before search results (overrides contextLines)"
         },
-        "multiBufferSearch.contextAfter": {
+        "omniBuffer.contextAfter": {
           "type": "number",
           "minimum": 0,
           "maximum": 10,
           "description": "Number of context lines to show after search results (overrides contextLines)"
         },
-        "multiBufferSearch.incrementalUpdates.enabled": {
+        "omniBuffer.incrementalUpdates.enabled": {
           "type": "boolean",
           "default": false,
           "description": "Enable incremental search updates (experimental)"
         },
-        "multiBufferSearch.incrementalUpdates.debounceDelay": {
+        "omniBuffer.incrementalUpdates.debounceDelay": {
           "type": "number",
           "default": 500,
           "minimum": 100,

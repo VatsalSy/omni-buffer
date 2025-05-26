@@ -18,7 +18,7 @@ export class Excerpt implements ExcerptInfo {
     public fileUri: vscode.Uri,
     public buffer: vscode.TextDocument,
     public sourceRange: vscode.Range,
-    public multiBufferRange: vscode.Range,
+    public omniBufferRange: vscode.Range,
     public contextBefore: number,
     public contextAfter: number,
     public isMatch: boolean,
@@ -44,8 +44,8 @@ export class Excerpt implements ExcerptInfo {
     if (!sourceRange || !(sourceRange instanceof vscode.Range)) {
       throw new Error('Excerpt sourceRange must be a valid vscode.Range')
     }
-    if (!multiBufferRange || !(multiBufferRange instanceof vscode.Range)) {
-      throw new Error('Excerpt multiBufferRange must be a valid vscode.Range')
+    if (!omniBufferRange || !(omniBufferRange instanceof vscode.Range)) {
+      throw new Error('Excerpt omniBufferRange must be a valid vscode.Range')
     }
     
     // Validate that sourceRange is within document bounds

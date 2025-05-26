@@ -55,7 +55,7 @@ suite('Extension Test Suite', () => {
       fileUri: mockUri,
       buffer: mockDocument,
       sourceRange: new vscode.Range(2, 0, 2, 20),
-      multiBufferRange: new vscode.Range(0, 0, 5, 0),
+      omniBufferRange: new vscode.Range(0, 0, 5, 0),
       contextBefore: 2,
       contextAfter: 2,
       isMatch: true,

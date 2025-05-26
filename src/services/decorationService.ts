@@ -1,14 +1,14 @@
 /**
  * # Decoration Service
  *
- * Handles editor decorations for multi-buffer documents.
+ * Handles editor decorations for omni-buffer documents.
  *
  * Author: Unknown
  * Update: Initial version
  */
 
 import * as vscode from 'vscode'
-import { MultiBufferMapping, SearchOptions } from '../models/types'
+import { OmniBufferMapping, SearchOptions } from '../models/types'
 
 export class DecorationService {
   private fileHeaderDecoration: vscode.TextEditorDecorationType
@@ -60,7 +60,7 @@ export class DecorationService {
 
   applyDecorations(
     editor: vscode.TextEditor,
-    mapping: MultiBufferMapping,
+    mapping: OmniBufferMapping,
     searchOptions: SearchOptions
   ): void {
     const fileHeaderRanges: vscode.Range[] = []

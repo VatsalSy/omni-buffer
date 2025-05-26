@@ -8,30 +8,30 @@
  */
 
 import * as vscode from 'vscode'
-import { MultiBufferProvider } from '../multiBufferProvider'
+import { OmniBufferProvider } from '../omniBufferProvider'
 
 export class ApplyChangesCommand {
-  constructor(private multiBufferProvider: MultiBufferProvider) {}
+  constructor(private omniBufferProvider: OmniBufferProvider) {}
 
   async execute(): Promise<void> {
     const editor = vscode.window.activeTextEditor
     if (!editor) return
     const document = editor.document
-    if (document.uri.scheme !== 'multibuffer') return
+    if (document.uri.scheme !== 'omnibuffer') return
     try {
-      const multiBufferDoc = this.multiBufferProvider.getDocument(document.uri)
-      if (!multiBufferDoc) {
-        vscode.window.showErrorMessage('Multi-buffer document not found')
+      const omniBufferDoc = this.omniBufferProvider.getDocument(document.uri)
+      if (!omniBufferDoc) {
+        vscode.window.showErrorMessage('Omni-buffer document not found')
         return
       }
-      const changeTracker = this.multiBufferProvider.getChangeTracker(
+      const changeTracker = this.omniBufferProvider.getChangeTracker(
         document.uri
       )
       if (!changeTracker) {
         vscode.window.showErrorMessage('Change tracker not initialized')
         return
       }
-      const changes = changeTracker.computeChanges(document, multiBufferDoc.mapping)
+      const changes = changeTracker.computeChanges(document, omniBufferDoc.mapping)
       if (changes.size === 0) {
         vscode.window.showInformationMessage('No changes to apply')
         return

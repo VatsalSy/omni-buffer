@@ -19,7 +19,7 @@ export class SearchService {
   
   /**
    * Placeholder range used temporarily when creating excerpts.
-   * This will be replaced with actual multi-buffer coordinates by the formatter.
+   * This will be replaced with actual omni-buffer coordinates by the formatter.
    */
   private static readonly PLACEHOLDER_RANGE = new vscode.Range(0, 0, 0, 0)
 

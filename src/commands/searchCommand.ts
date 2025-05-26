@@ -13,15 +13,15 @@ import { IncrementalSearchService } from '../services/incrementalSearchService'
 import { ResultFormatter } from '../services/resultFormatter'
 import { DecorationService } from '../services/decorationService'
 import { ChangeTracker } from '../services/changeTracker'
-import { SearchOptions, MultiBufferDocument } from '../models/types'
-import { MultiBufferProvider } from '../multiBufferProvider'
+import { SearchOptions, OmniBufferDocument } from '../models/types'
+import { OmniBufferProvider } from '../omniBufferProvider'
 
 export class SearchCommand {
   constructor(
     private searchService: SearchService,
     private formatter: ResultFormatter,
     private decorationService: DecorationService,
-    private multiBufferProvider: MultiBufferProvider
+    private omniBufferProvider: OmniBufferProvider
   ) {}
 
   async execute(): Promise<void> {
@@ -47,17 +47,17 @@ export class SearchCommand {
           }
           const { content, mapping } =
             this.formatter.formatSearchResults(results, options)
-          const multiBufferDoc: MultiBufferDocument = {
+          const omniBufferDoc: OmniBufferDocument = {
             content,
             mapping,
             searchOptions: options,
             uri: vscode.Uri.parse(
-              `multibuffer:search-${Date.now()}.multibuffer`
+              `omnibuffer:search-${Date.now()}.omnibuffer`
             )
           }
-          this.multiBufferProvider.addDocument(multiBufferDoc)
+          this.omniBufferProvider.addDocument(omniBufferDoc)
           const document = await vscode.workspace.openTextDocument(
-            multiBufferDoc.uri
+            omniBufferDoc.uri
           )
           const editor = await vscode.window.showTextDocument(document, {
             preview: false,
@@ -65,8 +65,8 @@ export class SearchCommand {
           })
           const changeTracker = new ChangeTracker()
           changeTracker.initialize(document, mapping)
-          this.multiBufferProvider.setChangeTracker(
-            multiBufferDoc.uri,
+          this.omniBufferProvider.setChangeTracker(
+            omniBufferDoc.uri,
             changeTracker
           )
           this.decorationService.applyDecorations(
@@ -126,7 +126,7 @@ export class SearchCommand {
     if (!query) return undefined
     
     // Get context lines from configuration
-    const config = vscode.workspace.getConfiguration('multiBufferSearch')
+    const config = vscode.workspace.getConfiguration('omniBuffer')
     const contextLines = config.get<number>('contextLines', 2)
     const contextBefore = config.get<number>('contextBefore')
     const contextAfter = config.get<number>('contextAfter')

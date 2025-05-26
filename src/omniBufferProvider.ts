@@ -1,18 +1,18 @@
 /**
- * # Multi-Buffer Provider
+ * # Omni-Buffer Provider
  *
- * Provides in-memory documents for the multi-buffer scheme.
+ * Provides in-memory documents for the omni-buffer scheme.
  *
  * Author: Unknown
  * Update: Initial version
  */
 
 import * as vscode from 'vscode'
-import { MultiBufferDocument } from './models/types'
+import { OmniBufferDocument } from './models/types'
 import { ChangeTracker } from './services/changeTracker'
 
-export class MultiBufferProvider implements vscode.TextDocumentContentProvider {
-  private documents = new Map<string, MultiBufferDocument>()
+export class OmniBufferProvider implements vscode.TextDocumentContentProvider {
+  private documents = new Map<string, OmniBufferDocument>()
   private changeTrackers = new Map<string, ChangeTracker>()
   private _onDidChange = new vscode.EventEmitter<vscode.Uri>()
   readonly onDidChange = this._onDidChange.event
@@ -22,12 +22,12 @@ export class MultiBufferProvider implements vscode.TextDocumentContentProvider {
     return doc?.content || ''
   }
 
-  addDocument(doc: MultiBufferDocument): void {
+  addDocument(doc: OmniBufferDocument): void {
     this.documents.set(doc.uri.toString(), doc)
     this._onDidChange.fire(doc.uri)
   }
 
-  updateDocument(uri: vscode.Uri, updater: (doc: MultiBufferDocument) => void): void {
+  updateDocument(uri: vscode.Uri, updater: (doc: OmniBufferDocument) => void): void {
     const doc = this.documents.get(uri.toString())
     if (doc) {
       updater(doc)
@@ -35,7 +35,7 @@ export class MultiBufferProvider implements vscode.TextDocumentContentProvider {
     }
   }
 
-  getDocument(uri: vscode.Uri): MultiBufferDocument | undefined {
+  getDocument(uri: vscode.Uri): OmniBufferDocument | undefined {
     return this.documents.get(uri.toString())
   }
 
