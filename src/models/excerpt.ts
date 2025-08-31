@@ -9,6 +9,7 @@
 
 import * as vscode from 'vscode'
 import { ExcerptInfo } from './types'
+import * as nodeCrypto from 'crypto'
 
 export class Excerpt implements ExcerptInfo {
   private static idCounter = 0;
@@ -69,29 +70,23 @@ export class Excerpt implements ExcerptInfo {
 
   static generateId(): string {
     // Increment counter for uniqueness in rapid calls
-    this.idCounter = (this.idCounter + 1) % 1000000;
-    
-    // Use high-resolution timestamp
-    const timestamp = Date.now();
-    const hrTime = process.hrtime.bigint ? process.hrtime.bigint().toString() : timestamp.toString();
-    
-    // Generate cryptographically secure random string if crypto is available
-    let randomStr: string;
+    this.idCounter = (this.idCounter + 1) % 1000000
+
+    // High-resolution timestamp component
+    const hrTime = typeof process !== 'undefined' && (process as any).hrtime && (process as any).hrtime.bigint
+      ? (process as any).hrtime.bigint().toString()
+      : Date.now().toString()
+
+    // Cryptographically secure random bytes via Node's crypto
+    let randomStr: string
     try {
-      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-        const array = new Uint8Array(12);
-        crypto.getRandomValues(array);
-        randomStr = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-      } else {
-        // Fallback to Math.random with slice instead of deprecated substr
-        randomStr = Math.random().toString(36).slice(2, 11);
-      }
+      randomStr = nodeCrypto.randomBytes(12).toString('hex')
     } catch {
       // Fallback if crypto fails
-      randomStr = Math.random().toString(36).slice(2, 11);
+      randomStr = Math.random().toString(36).slice(2, 11)
     }
-    
-    return `excerpt_${hrTime}_${this.idCounter}_${randomStr}`;
+
+    return `excerpt_${hrTime}_${this.idCounter}_${randomStr}`
   }
 
   getContextRange(): vscode.Range {

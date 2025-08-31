@@ -14,6 +14,20 @@ import * as vscode from 'vscode'
 import { SearchOptions, ExcerptInfo, getContextValues } from '../models/types'
 import { Excerpt } from '../models/excerpt'
 
+// Minimal structural types to avoid dependency on VS Code's search type exports
+type TextSearchMatchLike = {
+  uri: vscode.Uri
+  ranges?: vscode.Range[]
+  range?: vscode.Range
+  matches?: { range: vscode.Range }[]
+}
+type TextSearchQueryLike = {
+  pattern: string
+  isRegExp?: boolean
+  isCaseSensitive?: boolean
+  isWordMatch?: boolean
+}
+
 export class SearchService {
   private static readonly DEFAULT_CONTEXT_LINES = 2
   
@@ -26,7 +40,7 @@ export class SearchService {
   /**
    * Type guard to check if a result is a TextSearchMatch
    */
-  private isTextSearchMatch(result: any): result is vscode.TextSearchMatch {
+  private isTextSearchMatch(result: any): result is TextSearchMatchLike {
     return (
       result &&
       typeof result === 'object' &&
@@ -49,55 +63,159 @@ export class SearchService {
     options: SearchOptions
   ): Promise<Map<vscode.Uri, ExcerptInfo[]>> {
     const results = new Map<vscode.Uri, ExcerptInfo[]>()
-    const searchPattern = this.createSearchPattern(options)
-    const matches: vscode.TextSearchMatch[] = []
+    const workspaceAny = vscode.workspace as any
 
-    await vscode.workspace.findTextInFiles(
-      searchPattern,
-      {
-        include: options.includePattern || '**/*',
-        exclude: options.excludePattern,
-        useIgnoreFiles: true,
-        maxResults: options.maxResults
-      },
-      (result: vscode.TextSearchResult) => {
-        if (this.isTextSearchMatch(result)) {
-          matches.push(result)
+    if (typeof workspaceAny.findTextInFiles === 'function') {
+      const searchPattern = this.createSearchPattern(options)
+      const matches: TextSearchMatchLike[] = []
+
+      try {
+        await workspaceAny.findTextInFiles(
+          searchPattern,
+          {
+            include: options.includePattern || '**/*',
+            exclude: options.excludePattern,
+            useIgnoreFiles: true,
+            maxResults: options.maxResults
+          },
+          (result: any) => {
+            if (this.isTextSearchMatch(result)) {
+              matches.push(result)
+            }
+          }
+        )
+      } catch (err) {
+        // Fall back if proposed API is not enabled or any error occurs
+        return await this.searchWorkspaceFallback(options)
+      }
+
+      const matchesByFile = new Map<string, TextSearchMatchLike[]>()
+      for (const match of matches) {
+        const key = match.uri.toString()
+        let fileMatches = matchesByFile.get(key)
+        if (!fileMatches) {
+          fileMatches = []
+          matchesByFile.set(key, fileMatches)
+        }
+        fileMatches.push(match)
+      }
+
+      for (const [uriString, fileMatches] of matchesByFile) {
+        const uri = vscode.Uri.parse(uriString)
+        const { contextBefore, contextAfter } = getContextValues(options)
+        const excerpts = await this.createExcerptsForFile(
+          uri,
+          fileMatches,
+          contextBefore,
+          contextAfter
+        )
+        if (excerpts.length > 0) {
+          results.set(uri, excerpts)
         }
       }
-    )
 
-    const matchesByFile = new Map<string, vscode.TextSearchMatch[]>()
-    for (const match of matches) {
-      const key = match.uri.toString()
-      let fileMatches = matchesByFile.get(key)
-      if (!fileMatches) {
-        fileMatches = []
-        matchesByFile.set(key, fileMatches)
-      }
-      fileMatches.push(match)
+      return results
     }
 
-    for (const [uriString, fileMatches] of matchesByFile) {
-      const uri = vscode.Uri.parse(uriString)
-      const { contextBefore, contextAfter } = getContextValues(options)
-      const excerpts = await this.createExcerptsForFile(
-        uri,
-        fileMatches,
-        contextBefore,
-        contextAfter
-      )
-      if (excerpts.length > 0) {
-        results.set(uri, excerpts)
+    // Fallback when findTextInFiles is not available (stable API)
+    return await this.searchWorkspaceFallback(options)
+  }
+
+  private async searchWorkspaceFallback(
+    options: SearchOptions
+  ): Promise<Map<vscode.Uri, ExcerptInfo[]>> {
+    const include = options.includePattern || '**/*'
+    const exclude = options.excludePattern
+    const uris = await vscode.workspace.findFiles(include, exclude)
+
+    const results = new Map<vscode.Uri, ExcerptInfo[]>()
+    const { contextBefore, contextAfter } = getContextValues(options)
+
+    let globalCount = 0
+    const maxResults = options.maxResults ?? Number.MAX_SAFE_INTEGER
+
+    for (const uri of uris) {
+      if (globalCount >= maxResults) break
+      try {
+        const document = await vscode.workspace.openTextDocument(uri)
+        const ranges = this.findMatchesInDocument(document, options, maxResults - globalCount)
+        globalCount += ranges.length
+        if (ranges.length > 0) {
+          const matches: TextSearchMatchLike[] = ranges.map(r => ({ uri, range: r }))
+          const excerpts = await this.createExcerptsForFile(
+            uri,
+            matches,
+            contextBefore,
+            contextAfter
+          )
+          if (excerpts.length > 0) {
+            results.set(uri, excerpts)
+          }
+        }
+      } catch {
+        // Ignore unreadable files
       }
     }
 
     return results
   }
 
+  private findMatchesInDocument(
+    document: vscode.TextDocument,
+    options: SearchOptions,
+    remaining: number
+  ): vscode.Range[] {
+    const ranges: vscode.Range[] = []
+    const pattern = options.query
+    const isRegex = !!options.isRegex
+    const isCaseSensitive = !!options.isCaseSensitive
+    const wholeWord = !!options.matchWholeWord
+
+    const wordChar = (ch: string) => /[A-Za-z0-9_]/.test(ch)
+    const isWordBoundary = (text: string, start: number, length: number) => {
+      const b = start === 0 || !wordChar(text[start - 1])
+      const a = start + length >= text.length || !wordChar(text[start + length])
+      return b && a
+    }
+
+    const regex = isRegex
+      ? new RegExp(pattern, isCaseSensitive ? 'g' : 'gi')
+      : null
+
+    for (let lineNum = 0; lineNum < document.lineCount && ranges.length < remaining; lineNum++) {
+      const line = document.lineAt(lineNum)
+      const text = line.text
+      if (isRegex && regex) {
+        let m: RegExpExecArray | null
+        regex.lastIndex = 0
+        while ((m = regex.exec(text)) && ranges.length < remaining) {
+          if (!wholeWord || isWordBoundary(text, m.index, m[0].length)) {
+            const start = new vscode.Position(lineNum, m.index)
+            const end = new vscode.Position(lineNum, m.index + m[0].length)
+            ranges.push(new vscode.Range(start, end))
+          }
+          if (m.index === regex.lastIndex) regex.lastIndex++ // avoid zero-length loops
+        }
+      } else {
+        const haystack = isCaseSensitive ? text : text.toLowerCase()
+        const needle = isCaseSensitive ? pattern : pattern.toLowerCase()
+        let idx = 0
+        while ((idx = haystack.indexOf(needle, idx)) !== -1 && ranges.length < remaining) {
+          if (!wholeWord || isWordBoundary(text, idx, needle.length)) {
+            const start = new vscode.Position(lineNum, idx)
+            const end = new vscode.Position(lineNum, idx + needle.length)
+            ranges.push(new vscode.Range(start, end))
+          }
+          idx += Math.max(1, needle.length)
+        }
+      }
+    }
+    return ranges
+  }
+
   protected createSearchPattern(
     options: SearchOptions
-  ): vscode.TextSearchQuery {
+  ): TextSearchQueryLike {
     if (options.isRegex) {
       return {
         pattern: options.query,
@@ -120,7 +238,7 @@ export class SearchService {
    * - ranges: Array of Range objects (for matches with multiple selections)
    * - range: Single Range object (for simple matches)
    */
-  private getPrimaryRange(match: vscode.TextSearchMatch): vscode.Range {
+  private getPrimaryRange(match: TextSearchMatchLike): vscode.Range {
     // Prefer ranges array if it exists and has elements
     if (match.ranges && Array.isArray(match.ranges) && match.ranges.length > 0) {
       return match.ranges[0]
@@ -135,7 +253,7 @@ export class SearchService {
 
   protected async createExcerptsForFile(
     uri: vscode.Uri,
-    matches: vscode.TextSearchMatch[],
+    matches: TextSearchMatchLike[],
     contextBefore: number,
     contextAfter: number
   ): Promise<ExcerptInfo[]> {

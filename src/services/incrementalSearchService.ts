@@ -140,17 +140,18 @@ export class IncrementalSearchService extends SearchService {
     options: SearchOptions
   ): Promise<ExcerptInfo[]> {
     const searchPattern = this.createSearchPattern(options)
-    const matches: vscode.TextSearchMatch[] = []
+    const matches: any[] = []
 
-    await vscode.workspace.findTextInFiles(
+    const workspaceAny = vscode.workspace as any
+    await workspaceAny.findTextInFiles(
       searchPattern,
       {
         include: new vscode.RelativePattern(uri, '**'),
         maxResults: options.maxResults
       },
-      result => {
+      (result: any) => {
         if ('matches' in result && result.matches) {
-          matches.push(result as vscode.TextSearchMatch)
+          matches.push(result)
         }
       }
     )
